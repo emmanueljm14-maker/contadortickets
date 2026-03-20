@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Tickets en Linea - Cine</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f0f0f0;
+      color: #1a1a1a;
+      min-height: 100vh;
+      padding-bottom: 100px;
+    }
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: #1a1a2e;
+      color: #fff;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .title { font-size: 15px; font-weight: 600; color: #fff; }
+    .ticket-badge { font-size: 12px; background: rgba(255,255,255,0.15); color: #fff; padding: 4px 10px; border-radius: 20px; }
+    .app { padding: 12px; }
+    .categoria { margin-bottom: 16px; }
+    .categoria-titulo { font-size: 12px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; padding-left: 4px; }
+    .productos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .product-card {
+      background: #fff;
+      border: 2px solid #e8e8e8;
+      border-radius: 14px;
+      padding: 12px 6px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      position: relative;
+      min-height: 90px;
+      justify-content: center;
+      transition: transform 0.1s, border-color 0.15s;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .product-card:active { transform: scale(0.94); }
+    .product-card.tiene-count { border-color: #2563eb; background: #eff6ff; }
+    .product-icon { font-size: 26px; line-height: 1; }
+    .product-name { font-size: 10px; color: #777; text-align: center; line-height: 1.2; }
+    .product-card.tiene-count .product-name { color: #1d4ed8; }
+    .product-count { font-size: 22px; font-weight: 700; color: #1a1a1a; min-height: 26px; line-height: 1; }
+    .product-card.tiene-count .product-count { color: #2563eb; }
+    .minus-btn {
+      position: absolute; top: 5px; right: 5px;
+      width: 22px; height: 22px;
+      border-radius: 50%; border: 1.5px solid #ddd;
+      background: #f5f5f5; font-size: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: #999; opacity: 0; transition: opacity 0.15s;
+      line-height: 1; padding-bottom: 1px;
+    }
+    .product-card.tiene-count .minus-btn { opacity: 1; }
+    .minus-btn:active { background: #fee2e2; color: #dc2626; }
+    .actions-bar {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 100;
+      background: #fff;
+      border-top: 1px solid #e0e0e0;
+      padding: 10px 12px;
+      padding-bottom: calc(10px + env(safe-area-inset-bottom));
+      display: flex;
+      gap: 8px;
+    }
+    .btn {
+      flex: 1;
+      padding: 13px 8px;
+      border-radius: 10px;
+      border: 1.5px solid #d1d5db;
+      background: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      color: #374151;
+      text-align: center;
+    }
+    .btn:active { opacity: 0.7; transform: scale(0.97); }
+    .btn-primary { background: #2563eb; color: #fff; border-color: #2563eb; flex: 2; }
+    .btn-danger { color: #dc2626; border-color: #fca5a5; }
+    .btn-danger:active { background: #fee2e2; }
+    .divider { border: none; border-top: 1px solid #e8e8e8; margin: 14px 0; }
+    .summary { background: #fff; border-radius: 14px; padding: 14px; margin-top: 8px; }
+    .summary-title { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+    .summary-cat { font-size: 10px; color: #bbb; text-transform: uppercase; letter-spacing: 0.06em; margin: 10px 0 4px; }
+    .summary-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid #f3f4f6; font-size: 14px; }
+    .summary-row:last-child { border-bottom: none; }
+    .summary-label { color: #444; }
+    .summary-value { font-weight: 700; background: #eff6ff; color: #2563eb; padding: 3px 12px; border-radius: 20px; font-size: 13px; }
+    .tickets-log { margin-top: 8px; }
+    .tickets-log-title { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; padding-left: 4px; }
+    .ticket-item { font-size: 12px; color: #555; padding: 10px 12px; border-radius: 10px; background: #fff; border: 1px solid #e8e8e8; margin-bottom: 6px; line-height: 1.5; }
+    .ticket-num { font-weight: 700; color: #2563eb; margin-right: 4px; }
+    .toast {
+      position: fixed;
+      top: 64px; left: 50%;
+      transform: translateX(-50%) translateY(-10px);
+      background: #16a34a; color: #fff;
+      padding: 10px 20px; border-radius: 20px;
+      font-size: 13px; font-weight: 600;
+      opacity: 0; transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none; z-index: 200; white-space: nowrap;
+    }
+    .toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .empty-msg { font-size: 13px; color: #bbb; text-align: center; padding: 20px 0; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <span class="title">🎬 Tickets en linea</span>
+    <span class="ticket-badge" id="ticket-count">0 tickets</span>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="app">
+    <div id="categorias-container"></div>
+    <hr class="divider">
+    <div class="summary">
+      <div class="summary-title">Total acumulado</div>
+      <div id="summary-rows"><p class="empty-msg">Aun no hay tickets guardados</p></div>
+    </div>
+    <div class="tickets-log" id="tickets-log-section" style="display:none;">
+      <hr class="divider">
+      <div class="tickets-log-title">Historial</div>
+      <div id="tickets-list"></div>
+    </div>
+  </div>
+
+  <div class="actions-bar">
+    <button class="btn btn-danger" onclick="limpiarTicketActual()">Limpiar</button>
+    <button class="btn btn-primary" onclick="guardarTicket()">Guardar ticket</button>
+    <button class="btn" onclick="reiniciarTodo()">Reset</button>
+  </div>
+
+  <script>
+    const catalogo = [
+      {
+        cat: 'Palomitas', icono_cat: '🍿',
+        productos: [
+          { id: 'pal_llevar',  nombre: 'Para llevar', icono: '🍿' },
+          { id: 'pal_jumbo',   nombre: 'Jumbo',       icono: '🍿' },
+          { id: 'pal_grande',  nombre: 'Grandes',     icono: '🍿' },
+          { id: 'pal_mediana', nombre: 'Medianas',    icono: '🍿' },
+          { id: 'pal_chica',   nombre: 'Chicas',      icono: '🍿' },
+        ]
+      },
+      {
+        cat: 'Refrescos', icono_cat: '🥤',
+        productos: [
+          { id: 'ref_jumbo',   nombre: 'Jumbo',   icono: '🥤' },
+          { id: 'ref_grande',  nombre: 'Grande',  icono: '🥤' },
+          { id: 'ref_mediano', nombre: 'Mediano', icono: '🥤' },
+          { id: 'ref_chico',   nombre: 'Chico',   icono: '🥤' },
+        ]
+      },
+      {
+        cat: 'Icee', icono_cat: '🧊',
+        productos: [
+          { id: 'icee_grande', nombre: 'Grande', icono: '🧊' },
+        ]
+      },
+      {
+        cat: 'Dulces', icono_cat: '🍬',
+        productos: [
+          { id: 'mm_cac',       nombre: 'M&M Cacahuate',        icono: '🍬' },
+          { id: 'mm_choc',      nombre: 'M&M Chocolate',        icono: '🍫' },
+          { id: 'mm_cac120',    nombre: 'M&M Cacahuate 120g',   icono: '🍬' },
+          { id: 'mm_choc120',   nombre: 'M&M Chocolate 120g',   icono: '🍫' },
+          { id: 'skittles',     nombre: 'Skittles',             icono: '🍭' },
+          { id: 'skittles_pch', nombre: 'Skittles Pouch',       icono: '🍭' },
+          { id: 'skwink_sand',  nombre: 'Skwinkles Sandia',     icono: '🍉' },
+          { id: 'skwink_rel',   nombre: 'Skwinkles Rellenos',   icono: '🍬' },
+          { id: 'skwink_sal',   nombre: 'Skwinkles Salsagheti', icono: '🌶️' },
+          { id: 'skwink_chk',   nombre: 'Skwinkles Chunks',     icono: '🍬' },
+          { id: 'ositos_enc',   nombre: 'Ositos Enchilados',    icono: '🌶️' },
+          { id: 'aritos_enc',   nombre: 'Aritos Enchilados',    icono: '🌶️' },
+          { id: 'pelon',        nombre: 'Pelón Pelonazo',       icono: '🍭' },
+        ]
+      }
+    ];
+
+    let ticketActual = {}, totalAcumulado = {}, tickets = [], numTickets = 0;
+
+    catalogo.forEach(function(c) {
+      c.productos.forEach(function(p) {
+        ticketActual[p.id] = 0;
+        totalAcumulado[p.id] = 0;
+      });
+    });
+
+    function renderCategorias() {
+      const container = document.getElementById('categorias-container');
+      container.innerHTML = '';
+      catalogo.forEach(function(c) {
+        const sec = document.createElement('div');
+        sec.className = 'categoria';
+        sec.innerHTML = '<div class="categoria-titulo">' + c.icono_cat + ' ' + c.cat + '</div>';
+        const grid = document.createElement('div');
+        grid.className = 'productos-grid';
+        c.productos.forEach(function(p) {
+          const card = document.createElement('div');
+          card.className = 'product-card' + (ticketActual[p.id] > 0 ? ' tiene-count' : '');
+          card.id = 'card-' + p.id;
+          card.onclick = function(e) {
+            if (e.target.classList.contains('minus-btn')) return;
+            sumar(p.id);
+          };
+          card.innerHTML =
+            '<button class="minus-btn" onclick="restar(\'' + p.id + '\')">−</button>' +
+            '<div class="product-icon">' + p.icono + '</div>' +
+            '<div class="product-name">' + p.nombre + '</div>' +
+            '<div class="product-count" id="count-' + p.id + '">' + (ticketActual[p.id] > 0 ? ticketActual[p.id] : '') + '</div>';
+          grid.appendChild(card);
+        });
+        sec.appendChild(grid);
+        container.appendChild(sec);
+      });
+    }
+
+    function sumar(id) { ticketActual[id]++; actualizarCard(id); }
+    function restar(id) { if (ticketActual[id] > 0) ticketActual[id]--; actualizarCard(id); }
+
+    function actualizarCard(id) {
+      const countEl = document.getElementById('count-' + id);
+      const cardEl  = document.getElementById('card-' + id);
+      if (!countEl || !cardEl) return;
+      countEl.textContent = ticketActual[id] > 0 ? ticketActual[id] : '';
+      ticketActual[id] > 0 ? cardEl.classList.add('tiene-count') : cardEl.classList.remove('tiene-count');
+    }
+
+    function guardarTicket() {
+      const tieneAlgo = Object.values(ticketActual).some(function(v) { return v > 0; });
+      if (!tieneAlgo) return;
+      numTickets++;
+      let partes = [];
+      catalogo.forEach(function(c) {
+        c.productos.forEach(function(p) {
+          if (ticketActual[p.id] > 0) {
+            totalAcumulado[p.id] += ticketActual[p.id];
+            partes.push(ticketActual[p.id] + 'x ' + p.nombre);
+            ticketActual[p.id] = 0;
+          }
+        });
+      });
+      tickets.push({ num: numTickets, texto: partes.join(', ') });
+      renderCategorias();
+      renderSummary();
+      renderHistorial();
+      mostrarToast('Ticket #' + numTickets + ' guardado ✓');
+      document.getElementById('ticket-count').textContent = numTickets + (numTickets === 1 ? ' ticket' : ' tickets');
+    }
+
+    function renderSummary() {
+      const container = document.getElementById('summary-rows');
+      const hayDatos = Object.values(totalAcumulado).some(function(v) { return v > 0; });
+      if (!hayDatos) { container.innerHTML = '<p class="empty-msg">Aun no hay tickets guardados</p>'; return; }
+      container.innerHTML = '';
+      catalogo.forEach(function(c) {
+        const con = c.productos.filter(function(p) { return totalAcumulado[p.id] > 0; });
+        if (con.length === 0) return;
+        const cat = document.createElement('div');
+        cat.className = 'summary-cat';
+        cat.textContent = c.cat;
+        container.appendChild(cat);
+        con.forEach(function(p) {
+          const row = document.createElement('div');
+          row.className = 'summary-row';
+          row.innerHTML = '<span class="summary-label">' + p.icono + ' ' + p.nombre + '</span><span class="summary-value">' + totalAcumulado[p.id] + '</span>';
+          container.appendChild(row);
+        });
+      });
+    }
+
+    function renderHistorial() {
+      const section = document.getElementById('tickets-log-section');
+      const list = document.getElementById('tickets-list');
+      section.style.display = tickets.length > 0 ? 'block' : 'none';
+      list.innerHTML = '';
+      [...tickets].reverse().forEach(function(t) {
+        const item = document.createElement('div');
+        item.className = 'ticket-item';
+        item.innerHTML = '<span class="ticket-num">#' + t.num + '</span>' + t.texto;
+        list.appendChild(item);
+      });
+    }
+
+    let toastTimer = null;
+    function mostrarToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('visible');
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(function() { el.classList.remove('visible'); }, 2000);
+    }
+
+    function limpiarTicketActual() {
+      catalogo.forEach(function(c) { c.productos.forEach(function(p) { ticketActual[p.id] = 0; }); });
+      renderCategorias();
+    }
+
+    function reiniciarTodo() {
+      if (!confirm('Seguro que quieres reiniciar todo?')) return;
+      catalogo.forEach(function(c) {
+        c.productos.forEach(function(p) { ticketActual[p.id] = 0; totalAcumulado[p.id] = 0; });
+      });
+      tickets = []; numTickets = 0;
+      document.getElementById('ticket-count').textContent = '0 tickets';
+      renderCategorias(); renderSummary(); renderHistorial();
+    }
+
+    renderCategorias();
+  </script>
+</body>
+</html>
